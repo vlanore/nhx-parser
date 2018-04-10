@@ -1,4 +1,6 @@
-#include <istream>
+#include <iostream>
+#include <regex>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -41,6 +43,7 @@ class TreeWriter {
   ~*~ Implementations ~*~
 ==================================================================================================*/
 class DoubleListAnnotatedTree : public AnnotatedTree {
+  public:
     using Node = std::unordered_map<std::string, std::string>;
 
     std::vector<Node> nodes_;
@@ -70,4 +73,50 @@ class DoubleListAnnotatedTree : public AnnotatedTree {
 };
 
 /*================================================================================================*/
-class NHXParser : public TreeParser {};
+class NHXParser : public TreeParser {
+    // list of token for lexer
+    std::vector<std::regex> tokens{std::regex("\\("),
+                                   std::regex("\\)"),
+                                   std::regex(":"),
+                                   std::regex(";"),
+                                   std::regex(","),
+                                   std::regex("="),
+                                   std::regex("\\[&&NHX:"),
+                                   std::regex("\\]"),
+                                   std::regex("([0-9]*.)?[0-9]+"),
+                                   std::regex("[a-zA-Z0-9._-]+")};
+    using Token = std::pair<int, std::string>;  // first: index of token, second: token value
+
+    // result to be returned
+    DoubleListAnnotatedTree tree;
+
+    // state during parsing
+    int next_node{0};
+    std::string::const_iterator it;
+    Token next_token{-1, ""};
+
+    void find_token(const std::string& s) {
+        int token_number{0};
+        for (auto token : tokens) {
+            std::smatch m;
+            if (std::regex_search(it, s.end(), m, token) and m.prefix() == "") {
+                next_token = Token{token_number, m[0]};
+                it += std::string(m[0]).size();
+                return;
+            }
+            token_number++;
+        }
+        next_token = Token{-1, ""};  // no token found in chain
+    }
+
+  public:
+    const AnnotatedTree& parse(std::istream& is) {
+        std::string s(std::istreambuf_iterator<char>(is), {});  // FIXME probably not efficient
+        it = s.begin();
+        do {
+            find_token(s);
+            std::cout << next_token.second << std::endl;
+        } while (next_token.first != -1);
+        return tree;
+    }
+};
