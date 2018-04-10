@@ -10,13 +10,13 @@ class AnnotatedTree {
   public:
     using NodeIndex = int;
 
-    virtual std::vector<int>& children(NodeIndex node) = 0;
+    virtual const std::vector<int>& children(NodeIndex node) const = 0;
 
-    virtual int parent(NodeIndex node) = 0;
+    virtual int parent(NodeIndex node) const = 0;
 
-    virtual std::size_t nb_nodes() = 0;
+    virtual std::size_t nb_nodes() const = 0;
 
-    virtual std::string tag(NodeIndex node, std::string tag) = 0;
+    virtual std::string tag(NodeIndex node, std::string tag) const = 0;
 };
 
 /*
@@ -39,11 +39,11 @@ class DoubleListAnnotatedTree : public AnnotatedTree {
   public:
     using NodeIndex = int;
 
-    std::vector<int>& children(NodeIndex node) final { return children_.at(node); }
+    const std::vector<int>& children(NodeIndex node) const final { return children_.at(node); }
 
-    int parent(NodeIndex node) final { return parent_.at(node); }
+    int parent(NodeIndex node) const final { return parent_.at(node); }
 
-    std::size_t nb_nodes() final { return nodes_.size(); }
+    std::size_t nb_nodes() const final { return nodes_.size(); }
 
-    std::string tag(NodeIndex node, std::string tag) final { return nodes_.at(node).at(tag); }
+    std::string tag(NodeIndex node, std::string tag) const final { return nodes_.at(node).at(tag); }
 };
