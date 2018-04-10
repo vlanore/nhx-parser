@@ -75,33 +75,33 @@ class DoubleListAnnotatedTree : public AnnotatedTree {
 /*================================================================================================*/
 class NHXParser : public TreeParser {
     // list of token for lexer
-    std::vector<std::regex> tokens{std::regex("\\("),
-                                   std::regex("\\)"),
-                                   std::regex(":"),
-                                   std::regex(";"),
-                                   std::regex(","),
-                                   std::regex("="),
-                                   std::regex("\\[&&NHX:"),
-                                   std::regex("\\]"),
-                                   std::regex("([0-9]*.)?[0-9]+"),
-                                   std::regex("[a-zA-Z0-9._-]+")};
+    std::vector<std::regex> tokens{
+        std::regex("\\("),       std::regex("\\)"), std::regex(":"),
+        std::regex(";"),         std::regex(","),   std::regex("="),
+        std::regex("\\[&&NHX:"), std::regex("\\]"), std::regex("[a-zA-Z0-9._-]+")};
+    //                                  std::regex("([0-9]*.)?[0-9]+"),
     using Token = std::pair<int, std::string>;  // first: index of token, second: token value
 
     // result to be returned
     DoubleListAnnotatedTree tree;
 
     // state during parsing
-    int next_node{0};
     std::string::const_iterator it;
-    Token next_token{-1, ""};
+    std::string::const_iterator send;
 
-    void find_token(const std::string& s) {
+    Token next_token{-1, ""};
+    std::string input{""};
+    int next_node{0};
+
+    // lexer
+    void find_token() {
         int token_number{0};
         for (auto token : tokens) {
             std::smatch m;
-            if (std::regex_search(it, s.end(), m, token) and m.prefix() == "") {
+            if (std::regex_search(it, send, m, token) and m.prefix() == "") {
                 next_token = Token{token_number, m[0]};
                 it += std::string(m[0]).size();
+                // std::cout << "found token " << m[0] << std::endl;
                 return;
             }
             token_number++;
@@ -109,14 +109,114 @@ class NHXParser : public TreeParser {
         next_token = Token{-1, ""};  // no token found in chain
     }
 
+    // parser
+    void node_nothing(int number, int parent) {
+        tree.nodes_.emplace_back();
+        tree.parent_.push_back(parent);
+        tree.children_.emplace_back();
+        if (parent != -1) {
+            tree.children_.at(parent).push_back(number);
+        }
+
+        find_token();
+        switch (next_token.first) {
+            case 8:  // id
+                node_name(number, parent);
+                break;
+            case 2:  //:
+                node_length(number, parent);
+                break;
+            case 6:  // [&&NHX:
+                data(number, parent);
+                break;
+            case 0:  // (
+                next_node++;
+                node_nothing(next_node, number);
+                break;
+            default:
+                node_end(parent);
+        }
+    }
+
+    void node_name(int number, int parent) {
+        tree.nodes_[number]["name"] = next_token.second;
+
+        find_token();
+        switch (next_token.first) {
+            case 2:  //:
+                node_length(number, parent);
+                break;
+            case 6:  // [&&NHX:
+                data(number, parent);
+                break;
+            default:
+                node_end(parent);
+        }
+    }
+
+    void node_length(int number, int parent) {
+        find_token();
+        if (next_token.first == 8) {
+            tree.nodes_[number]["length"] = next_token.second;
+        } else {
+            // TODO error expected an id
+        }
+
+        find_token();
+        switch (next_token.first) {
+            case 6:  // [&&NHX:
+                data(number, parent);
+                break;
+            default:
+                node_end(parent);
+        }
+    }
+
+    void node_end(int parent) {
+        switch (next_token.first) {
+            case 4:  // ,
+                next_node++;
+                node_nothing(next_node, parent);
+                break;
+            case 1: {  // )
+                if (parent != -1) {
+                    node_name(parent, tree.parent_.at(parent));
+                }
+                break;
+            }
+            case 3:  // ;
+                break;
+            default:
+                std::cout << "Error while parsing token " << next_token.second << std::endl;
+                exit(1);
+        }
+    }
+
+    void data(int number, int parent) {
+        find_token();
+        if (next_token.first == 7) {  // ]
+            find_token();
+            node_end(parent);
+        } else if (next_token.first == 8) {  // id
+            std::string tag = next_token.second;
+            find_token();  // TODO check it's =
+            find_token();  // TODO check it's id
+            tree.nodes_[number][tag] = next_token.second;
+            data(number, parent);
+        } else if (next_token.first == 2) {  // :
+            data(number, parent);
+        } else {
+            // TODO error
+        }
+    }
+
   public:
     const AnnotatedTree& parse(std::istream& is) {
         std::string s(std::istreambuf_iterator<char>(is), {});  // FIXME probably not efficient
-        it = s.begin();
-        do {
-            find_token(s);
-            std::cout << next_token.second << std::endl;
-        } while (next_token.first != -1);
+        input = s;
+        it = input.begin();
+        send = input.end();
+        node_nothing(0, -1);
         return tree;
     }
 };
