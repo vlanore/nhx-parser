@@ -128,7 +128,7 @@ class NHXParser : public TreeParser {
         int token_number{0};
         for (auto token_regex : token_regexes) {
             std::smatch m;
-            if (std::regex_search(it, it + 30, m, token_regex.second) and m.prefix() == "") {
+            if (std::regex_search(it, it + 64, m, token_regex.second) and m.prefix() == "") {
                 next_token = Token{token_regex.first, m[0]};
                 it += std::string(m[0]).size();
                 // std::cout << "found token " << m[0] << std::endl;
@@ -136,7 +136,7 @@ class NHXParser : public TreeParser {
             }
             token_number++;
         }
-        next_token = Token{Invalid, "InvalidToken"};  // no token found in chain
+        next_token = Token{Invalid, std::string(it, it + 10) + "..."};  // no token found in chain
     }
 
     // parser
@@ -235,6 +235,8 @@ class NHXParser : public TreeParser {
 
   public:
     const AnnotatedTree& parse(std::istream& is) {
+        tree = DoubleListAnnotatedTree();
+        tree.root_ = 0;
         input = std::string(std::istreambuf_iterator<char>(is), {});
         it = input.begin();
         node_nothing(0, -1);
