@@ -65,7 +65,13 @@ class DoubleListAnnotatedTree : public AnnotatedTree {
 
     std::size_t nb_nodes() const final { return nodes_.size(); }
 
-    TagValue tag(NodeIndex node, TagName tag) const final { return nodes_.at(node).at(tag); }
+    TagValue tag(NodeIndex node, TagName tag) const final {
+        if (nodes_.at(node).count(tag) != 0) {
+            return nodes_.at(node).at(tag);
+        } else {
+            return "";
+        }
+    }
 };
 
 /*================================================================================================*/
@@ -103,6 +109,17 @@ class NHXParser : public TreeParser {
     std::string input{""};
     int next_node{0};
 
+    std::string expect(TokenType type) {
+        find_token();
+        if (next_token.first != type) {
+            std::cerr << "Error: expected token " << type << " but got token " << next_token.first
+                      << "(" << next_token.second << ") instead.\n";
+            exit(1);
+        } else {
+            return next_token.second;
+        }
+    }
+
     // lexer
     void find_token() {
         while (std::isspace(*it)) {
@@ -134,6 +151,7 @@ class NHXParser : public TreeParser {
         find_token();
         switch (next_token.first) {
             case Identifier:
+                tree.nodes_[number]["name"] = next_token.second;
                 node_name(number, parent);
                 break;
             case Colon:
@@ -152,8 +170,6 @@ class NHXParser : public TreeParser {
     }
 
     void node_name(int number, int parent) {
-        tree.nodes_[number]["name"] = next_token.second;
-
         find_token();
         switch (next_token.first) {
             case Colon:
@@ -168,12 +184,7 @@ class NHXParser : public TreeParser {
     }
 
     void node_length(int number, int parent) {
-        find_token();
-        if (next_token.first == Identifier) {
-            tree.nodes_[number]["length"] = next_token.second;
-        } else {
-            // TODO error expected an id
-        }
+        tree.nodes_[number]["length"] = expect(Identifier);
 
         find_token();
         switch (next_token.first) {
@@ -212,9 +223,8 @@ class NHXParser : public TreeParser {
             node_end(parent);
         } else if (next_token.first == Identifier) {
             std::string tag = next_token.second;
-            find_token();  // TODO check it's =
-            find_token();  // TODO check it's id
-            tree.nodes_[number][tag] = next_token.second;
+            expect(Equal);
+            tree.nodes_[number][tag] = expect(Identifier);
             data(number, parent);
         } else if (next_token.first == Colon) {
             data(number, parent);

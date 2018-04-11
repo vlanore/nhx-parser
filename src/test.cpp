@@ -14,8 +14,8 @@ int main() {
     NHXParser parser;
     auto& tree = parser.parse(ss);
     for (size_t i = 0; i < tree.nb_nodes(); i++) {
-        cout << "Node " << i << " (" << tree.tag(i, "name") << "), parent: " << tree.parent(i)
-             << ", children: ";
+        cout << "Node " << i << " (" << tree.tag(i, "name") << ":" << tree.tag(i, "length")
+             << "), parent: " << tree.parent(i) << ", children: ";
         auto& children = tree.children(i);
         for (auto child : children) {
             cout << child << " ";
