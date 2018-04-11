@@ -109,12 +109,20 @@ class NHXParser : public TreeParser {
     std::string input{""};
     int next_node{0};
 
+    [[noreturn]] void error(std::string) {
+        std::cerr << "Error at position "
+                  << std::distance(std::string::const_iterator(input.begin()), it) << ":\n";
+        std::cerr << "\t..." << std::string(it - 15, it + 15) << "...\n";
+        std::cerr << "\t                  ^\n";
+        throw 1;
+    }
+
     std::string expect(TokenType type) {
         find_token();
         if (next_token.first != type) {
             std::cerr << "Error: expected token " << type << " but got token " << next_token.first
                       << "(" << next_token.second << ") instead.\n";
-            exit(1);
+            error("");
         } else {
             return next_token.second;
         }
@@ -212,7 +220,7 @@ class NHXParser : public TreeParser {
                 break;
             default:
                 std::cout << "Error: unexpected token " << next_token.second << std::endl;
-                exit(1);
+                error("");
         }
     }
 
@@ -231,7 +239,7 @@ class NHXParser : public TreeParser {
         } else {
             std::cerr << "Error: improperly formatted contents in NHX data. Found unexpected token "
                       << next_token.second << std::endl;
-            exit(1);
+            error("");
         }
     }
 
