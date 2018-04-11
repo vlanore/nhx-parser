@@ -105,6 +105,9 @@ class NHXParser : public TreeParser {
 
     // lexer
     void find_token() {
+        while (std::isspace(*it)) {
+            it++;
+        }
         int token_number{0};
         for (auto token_regex : token_regexes) {
             std::smatch m;
@@ -116,7 +119,7 @@ class NHXParser : public TreeParser {
             }
             token_number++;
         }
-        next_token = Token{Invalid, ""};  // no token found in chain
+        next_token = Token{Invalid, "InvalidToken"};  // no token found in chain
     }
 
     // parser
@@ -197,7 +200,7 @@ class NHXParser : public TreeParser {
             case Semicolon:
                 break;
             default:
-                std::cout << "Error while parsing token " << next_token.second << std::endl;
+                std::cout << "Error: unexpected token " << next_token.second << std::endl;
                 exit(1);
         }
     }
