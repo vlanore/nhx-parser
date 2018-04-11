@@ -1,5 +1,5 @@
 #include <iostream>
-#include "interface.hpp"
+#include "nhx-parser.hpp"
 
 using namespace std;
 
@@ -12,5 +12,14 @@ int main() {
         "yeast:E=1.1.1.1]):0.1[&&NHX:S=Fungi])[&&NHX:E=1.1.1.1:D=N]; "};
 
     NHXParser parser;
-    parser.parse(ss);
+    auto& tree = parser.parse(ss);
+    for (size_t i = 0; i < tree.nb_nodes(); i++) {
+        cout << "Node " << i << " (" << tree.tag(i, "name") << "), parent: " << tree.parent(i)
+             << ", children: ";
+        auto& children = tree.children(i);
+        for (auto child : children) {
+            cout << child << " ";
+        }
+        cout << "\n";
+    }
 }

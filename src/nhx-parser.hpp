@@ -17,13 +17,9 @@ class AnnotatedTree {
     using ChildrenList = std::vector<NodeIndex>;
 
     virtual const ChildrenList& children(NodeIndex) const = 0;
-
     virtual NodeIndex parent(NodeIndex) const = 0;
-
     virtual NodeIndex root() const = 0;
-
     virtual std::size_t nb_nodes() const = 0;
-
     virtual TagValue tag(NodeIndex, TagName) const = 0;
 };
 
@@ -74,39 +70,53 @@ class DoubleListAnnotatedTree : public AnnotatedTree {
 
 /*================================================================================================*/
 class NHXParser : public TreeParser {
-    // list of token for lexer
-    std::vector<std::regex> tokens{
-        std::regex("\\("),       std::regex("\\)"), std::regex(":"),
-        std::regex(";"),         std::regex(","),   std::regex("="),
-        std::regex("\\[&&NHX:"), std::regex("\\]"), std::regex("[a-zA-Z0-9._-]+")};
-    //                                  std::regex("([0-9]*.)?[0-9]+"),
-    using Token = std::pair<int, std::string>;  // first: index of token, second: token value
+    // list of tokens for lexer
+    enum TokenType {
+        OpenParenthesis,
+        CloseParenthesis,
+        Colon,
+        Semicolon,
+        Comma,
+        Equal,
+        NHXOpen,
+        NHXClose,
+        Identifier,
+        Invalid
+    };
+    std::map<TokenType, std::regex> token_regexes{{OpenParenthesis, std::regex("\\(")},
+                                                  {CloseParenthesis, std::regex("\\)")},
+                                                  {Colon, std::regex(":")},
+                                                  {Semicolon, std::regex(";")},
+                                                  {Comma, std::regex(",")},
+                                                  {Equal, std::regex("=")},
+                                                  {NHXOpen, std::regex("\\[&&NHX:")},
+                                                  {NHXClose, std::regex("\\]")},
+                                                  {Identifier, std::regex("[a-zA-Z0-9._-]+")}};
+    using Token = std::pair<TokenType, std::string>;  // first: index of token, second: token value
 
     // result to be returned
     DoubleListAnnotatedTree tree;
 
     // state during parsing
     std::string::const_iterator it;
-    std::string::const_iterator send;
-
-    Token next_token{-1, ""};
+    Token next_token{Invalid, ""};
     std::string input{""};
     int next_node{0};
 
     // lexer
     void find_token() {
         int token_number{0};
-        for (auto token : tokens) {
+        for (auto token_regex : token_regexes) {
             std::smatch m;
-            if (std::regex_search(it, send, m, token) and m.prefix() == "") {
-                next_token = Token{token_number, m[0]};
+            if (std::regex_search(it, it + 30, m, token_regex.second) and m.prefix() == "") {
+                next_token = Token{token_regex.first, m[0]};
                 it += std::string(m[0]).size();
                 // std::cout << "found token " << m[0] << std::endl;
                 return;
             }
             token_number++;
         }
-        next_token = Token{-1, ""};  // no token found in chain
+        next_token = Token{Invalid, ""};  // no token found in chain
     }
 
     // parser
@@ -120,16 +130,16 @@ class NHXParser : public TreeParser {
 
         find_token();
         switch (next_token.first) {
-            case 8:  // id
+            case Identifier:
                 node_name(number, parent);
                 break;
-            case 2:  //:
+            case Colon:
                 node_length(number, parent);
                 break;
-            case 6:  // [&&NHX:
+            case NHXOpen:
                 data(number, parent);
                 break;
-            case 0:  // (
+            case OpenParenthesis:
                 next_node++;
                 node_nothing(next_node, number);
                 break;
@@ -143,10 +153,10 @@ class NHXParser : public TreeParser {
 
         find_token();
         switch (next_token.first) {
-            case 2:  //:
+            case Colon:
                 node_length(number, parent);
                 break;
-            case 6:  // [&&NHX:
+            case NHXOpen:
                 data(number, parent);
                 break;
             default:
@@ -156,7 +166,7 @@ class NHXParser : public TreeParser {
 
     void node_length(int number, int parent) {
         find_token();
-        if (next_token.first == 8) {
+        if (next_token.first == Identifier) {
             tree.nodes_[number]["length"] = next_token.second;
         } else {
             // TODO error expected an id
@@ -164,7 +174,7 @@ class NHXParser : public TreeParser {
 
         find_token();
         switch (next_token.first) {
-            case 6:  // [&&NHX:
+            case NHXOpen:
                 data(number, parent);
                 break;
             default:
@@ -174,17 +184,17 @@ class NHXParser : public TreeParser {
 
     void node_end(int parent) {
         switch (next_token.first) {
-            case 4:  // ,
+            case Comma:
                 next_node++;
                 node_nothing(next_node, parent);
                 break;
-            case 1: {  // )
+            case CloseParenthesis: {
                 if (parent != -1) {
                     node_name(parent, tree.parent_.at(parent));
                 }
                 break;
             }
-            case 3:  // ;
+            case Semicolon:
                 break;
             default:
                 std::cout << "Error while parsing token " << next_token.second << std::endl;
@@ -194,16 +204,16 @@ class NHXParser : public TreeParser {
 
     void data(int number, int parent) {
         find_token();
-        if (next_token.first == 7) {  // ]
+        if (next_token.first == NHXClose) {
             find_token();
             node_end(parent);
-        } else if (next_token.first == 8) {  // id
+        } else if (next_token.first == Identifier) {
             std::string tag = next_token.second;
             find_token();  // TODO check it's =
             find_token();  // TODO check it's id
             tree.nodes_[number][tag] = next_token.second;
             data(number, parent);
-        } else if (next_token.first == 2) {  // :
+        } else if (next_token.first == Colon) {
             data(number, parent);
         } else {
             // TODO error
@@ -212,10 +222,8 @@ class NHXParser : public TreeParser {
 
   public:
     const AnnotatedTree& parse(std::istream& is) {
-        std::string s(std::istreambuf_iterator<char>(is), {});  // FIXME probably not efficient
-        input = s;
+        input = std::string(std::istreambuf_iterator<char>(is), {});
         it = input.begin();
-        send = input.end();
         node_nothing(0, -1);
         return tree;
     }
