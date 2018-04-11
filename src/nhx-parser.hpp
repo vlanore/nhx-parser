@@ -229,12 +229,14 @@ class NHXParser : public TreeParser {
         } else if (next_token.first == Colon) {
             data(number, parent);
         } else {
-            // TODO error
+            std::cerr << "Error: improperly formatted contents in NHX data. Found unexpected token "
+                      << next_token.second << std::endl;
+            exit(1);
         }
     }
 
   public:
-    const AnnotatedTree& parse(std::istream& is) {
+    const AnnotatedTree& parse(std::istream& is) final {
         tree = DoubleListAnnotatedTree();
         tree.root_ = 0;
         input = std::string(std::istreambuf_iterator<char>(is), {});
