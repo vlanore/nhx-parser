@@ -6,9 +6,25 @@
 
 using namespace std;
 
-#define TEST_ERROR       \
-    stringstream ss{""}; \
+#define TEST_ERROR             \
+    stringstream error_ss{""}; \
     try
+
+#define TEST_ERROR_END(message) \
+    catch (NHXException e) {    \
+        error_ss << e.what();   \
+    }                           \
+    CHECK(error_ss.str() == message);
+
+TEST_CASE("Error: invalid token") {
+    stringstream ss{"aopzioei+++++)&é')\"àqspoira"};
+
+    NHXParser parser;
+    TEST_ERROR { parser.parse(ss); }
+    TEST_ERROR_END(
+        "Error: unexpected token +++++)&é'...\nError at position "
+        "8:\n\taopzioei+++++)&é')\"àq...\n\t        ^\n");
+}
 
 TEST_CASE("Small tree.") {
     stringstream ss{
