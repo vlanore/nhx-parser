@@ -6,6 +6,10 @@
 
 using namespace std;
 
+#define TEST_ERROR       \
+    stringstream ss{""}; \
+    try
+
 TEST_CASE("Small tree.") {
     stringstream ss{
         // data copy-pasted from the NHX description pdf (see README for url)

@@ -75,6 +75,11 @@ class DoubleListAnnotatedTree : public AnnotatedTree {
 };
 
 /*================================================================================================*/
+struct NHXException : public std::runtime_error {
+    NHXException(std::string s = "") : std::runtime_error(s) {}
+};
+
+/*================================================================================================*/
 class NHXParser : public TreeParser {
     // list of tokens for lexer
     enum TokenType {
@@ -112,26 +117,25 @@ class NHXParser : public TreeParser {
     std::string input{""};
     int next_node{0};
 
-    [[noreturn]] void error(std::string) {
-        std::cerr << "Error at position " << std::distance(scit(input.begin()), it) << ":\n";
+    [[noreturn]] void error(std::string s) {
+        std::stringstream ss;
+        ss << s;
+        ss << "Error at position " << std::distance(scit(input.begin()), it) << ":\n";
         bool at_begining = it - 15 <= input.begin();
         bool at_end = it + 15 >= input.end();
-        std::cerr << "\t" << (at_begining ? "" : "...")
-                  << std::string(at_begining ? input.begin() : it - 15,
-                                 at_end ? input.end() : it + 15)
-                  << (at_end ? "" : "...") << "\n";
-        std::cerr << "\t" << (at_begining ? "" : "   ")
-                  << std::string(at_begining ? std::distance(scit(input.begin()), it) : 15, ' ')
-                  << "^\n";
-        throw 1;
+        ss << "\t" << (at_begining ? "" : "...")
+           << std::string(at_begining ? input.begin() : it - 15, at_end ? input.end() : it + 15)
+           << (at_end ? "" : "...") << "\n";
+        ss << "\t" << (at_begining ? "" : "   ")
+           << std::string(at_begining ? std::distance(scit(input.begin()), it) : 15, ' ') << "^\n";
+        throw NHXException(ss.str());
     }
 
     std::string expect(TokenType type) {
         find_token();
         if (next_token.first != type) {
-            std::cerr << "Error: expected token " << type << " but got token " << next_token.first
-                      << "(" << next_token.second << ") instead.\n";
-            error("");
+            error("Error: expected token " + std::to_string(type) + " but got token " +
+                  std::to_string(next_token.first) + "(" + next_token.second + ") instead.\n");
         } else {
             return next_token.second;
         }
@@ -236,8 +240,7 @@ class NHXParser : public TreeParser {
             case Semicolon:
                 break;
             default:
-                std::cout << "Error: unexpected token " << next_token.second << std::endl;
-                error("");
+                error("Error: unexpected token " + next_token.second + '\n');
         }
     }
 
@@ -254,9 +257,8 @@ class NHXParser : public TreeParser {
         } else if (next_token.first == Colon) {
             data(number, parent);
         } else {
-            std::cerr << "Error: improperly formatted contents in NHX data. Found unexpected token "
-                      << next_token.second << std::endl;
-            error("");
+            error("Error: improperly formatted contents in NHX data. Found unexpected token " +
+                  next_token.second + '\n');
         }
     }
 
