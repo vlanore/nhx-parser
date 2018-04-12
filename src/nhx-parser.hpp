@@ -85,7 +85,8 @@ class NHXParser : public TreeParser {
         Comma,
         Equal,
         NHXOpen,
-        NHXClose,
+        CommentOpen,
+        BracketClose,
         Identifier,
         Invalid
     };
@@ -96,7 +97,8 @@ class NHXParser : public TreeParser {
                                                   {Comma, std::regex(",")},
                                                   {Equal, std::regex("=")},
                                                   {NHXOpen, std::regex("\\[&&NHX:")},
-                                                  {NHXClose, std::regex("\\]")},
+                                                  {CommentOpen, std::regex("\\[")},
+                                                  {BracketClose, std::regex("\\]")},
                                                   {Identifier, std::regex("[a-zA-Z0-9._-]+")}};
     using Token = std::pair<TokenType, std::string>;  // first: index of token, second: token value
 
@@ -112,8 +114,18 @@ class NHXParser : public TreeParser {
     [[noreturn]] void error(std::string) {
         std::cerr << "Error at position "
                   << std::distance(std::string::const_iterator(input.begin()), it) << ":\n";
-        std::cerr << "\t..." << std::string(it - 15, it + 15) << "...\n";
-        std::cerr << "\t                  ^\n";
+        bool at_begining = it - 15 <= input.begin();
+        bool at_end = it + 15 >= input.end();
+        std::cerr << "\t" << (at_begining ? "" : "...")
+                  << std::string(at_begining ? input.begin() : it - 15,
+                                 at_end ? input.end() : it + 15)
+                  << (at_end ? "" : "...") << "\n";
+        std::cerr << "\t" << (at_begining ? "" : "   ")
+                  << std::string(at_begining
+                                     ? std::distance(std::string::const_iterator(input.begin()), it)
+                                     : 15,
+                                 ' ')
+                  << "^\n";
         throw 1;
     }
 
@@ -226,7 +238,7 @@ class NHXParser : public TreeParser {
 
     void data(int number, int parent) {
         find_token();
-        if (next_token.first == NHXClose) {
+        if (next_token.first == BracketClose) {
             find_token();
             node_end(parent);
         } else if (next_token.first == Identifier) {
