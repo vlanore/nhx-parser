@@ -106,14 +106,14 @@ class NHXParser : public TreeParser {
     DoubleListAnnotatedTree tree;
 
     // state during parsing
-    std::string::const_iterator it;
+    using scit = std::string::const_iterator;
+    scit it;
     Token next_token{Invalid, ""};
     std::string input{""};
     int next_node{0};
 
     [[noreturn]] void error(std::string) {
-        std::cerr << "Error at position "
-                  << std::distance(std::string::const_iterator(input.begin()), it) << ":\n";
+        std::cerr << "Error at position " << std::distance(scit(input.begin()), it) << ":\n";
         bool at_begining = it - 15 <= input.begin();
         bool at_end = it + 15 >= input.end();
         std::cerr << "\t" << (at_begining ? "" : "...")
@@ -121,10 +121,7 @@ class NHXParser : public TreeParser {
                                  at_end ? input.end() : it + 15)
                   << (at_end ? "" : "...") << "\n";
         std::cerr << "\t" << (at_begining ? "" : "   ")
-                  << std::string(at_begining
-                                     ? std::distance(std::string::const_iterator(input.begin()), it)
-                                     : 15,
-                                 ' ')
+                  << std::string(at_begining ? std::distance(scit(input.begin()), it) : 15, ' ')
                   << "^\n";
         throw 1;
     }
@@ -149,6 +146,14 @@ class NHXParser : public TreeParser {
         for (auto token_regex : token_regexes) {
             std::smatch m;
             if (std::regex_search(it, it + 64, m, token_regex.second) and m.prefix() == "") {
+                if (token_regex.first == CommentOpen) {  // support of comments
+                    std::string comment_close{"]"};
+                    it = std::search(it, scit(input.end()), comment_close.begin(),
+                                     comment_close.end()) +
+                         1;
+                    find_token();
+                    return;
+                }
                 next_token = Token{token_regex.first, m[0]};
                 it += std::string(m[0]).size();
                 // std::cout << "found token " << m[0] << std::endl;
