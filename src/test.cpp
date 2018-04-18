@@ -19,8 +19,7 @@ using namespace std;
 TEST_CASE("Error: invalid token") {
     stringstream ss{"aopzioei+++++)&é')\"àqspoira"};
 
-    NHXParser parser;
-    TEST_ERROR { parser.parse(ss); }
+    TEST_ERROR { NHXParser parser(ss); }
     TEST_ERROR_END(
         "Error: unexpected token +++++)&é'...\nError at position "
         "8:\n\taopzioei+++++)&é')\"àq...\n\t        ^\n");
@@ -35,9 +34,9 @@ TEST_CASE("Small tree.") {
         "ADH3:0.13[&&NHX:S=yeast:E=1.1.1.1],ADH2:0.12[&&NHX:S=yeast:E=1.1.1.1],ADH1:0.11[&&NHX:S="
         "yeast:E=1.1.1.1]):0.1[&&NHX:S=Fungi])[&&NHX:E=1.1.1.1:D=N]; "};
 
-    NHXParser parser;
+    NHXParser parser(ss);
     auto begin = std::chrono::high_resolution_clock::now();
-    auto& tree = parser.parse(ss);
+    auto& tree = parser.get_tree();
     auto end = std::chrono::high_resolution_clock::now();
     CHECK(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() < 25);
     CHECK(tree.nb_nodes() == 12);
@@ -60,9 +59,9 @@ TEST_CASE("Comments.") {
         "autre &éé\"çà)àç)é'],ADH1:0.11[&&NHX:S="
         "yeast:E=1.1.1.1]):0.1[&&NHX:S=Fungi])[&&NHX:E=1.1.1.1:D=N]; "};
 
-    NHXParser parser;
+    NHXParser parser(ss);
     auto begin = std::chrono::high_resolution_clock::now();
-    auto& tree = parser.parse(ss);
+    auto& tree = parser.get_tree();
     auto end = std::chrono::high_resolution_clock::now();
     CHECK(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() < 25);
     CHECK(tree.nb_nodes() == 12);
@@ -77,9 +76,9 @@ TEST_CASE("Comments.") {
 TEST_CASE("Medium-sized tree (110 nodes).") {
     ifstream f("data/tree1.nhx");
 
-    NHXParser parser;
+    NHXParser parser(f);
     auto begin = std::chrono::high_resolution_clock::now();
-    auto& tree = parser.parse(f);
+    auto& tree = parser.get_tree();
     auto end = std::chrono::high_resolution_clock::now();
     CHECK(std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() < 100);
     CHECK(tree.nb_nodes() == 111);
