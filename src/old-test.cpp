@@ -33,7 +33,7 @@ license and that you accept its terms.*/
 using namespace std;
 
 int main() {
-    ifstream f("data/tree1.nhx");
+    ifstream f("../convergence-scripts/example/newick.tree.annotated");
 
     stringstream ss{
         "(((ADH2:0.1[&&NHX:S=human:E=1.1.1.1], ADH1:0.11[&&NHX:S=human:E=1.1.1.1]):0.05[&&NHX:S="
@@ -42,7 +42,7 @@ int main() {
         "ADH3:0.13[&&NHX:S=yeast:E=1.1.1.1],ADH2:0.12[&&NHX:S=yeast:E=1.1.1.1],ADH1:0.11[&&NHX:S="
         "yeast:E=1.1.1.1]):0.1[&&NHX:S=Fungi])[&&NHX:E=1.1.1.1:D=N];"};
 
-    NHXParser parser(ss);
+    NHXParser parser(f);
 
     auto begin = std::chrono::high_resolution_clock::now();
     auto& tree = parser.get_tree();
@@ -58,5 +58,9 @@ int main() {
             cout << child << " ";
         }
         cout << "\n";
+    }
+    cout << "====================================\nConditions:\n";
+    for (auto i = 0; i < int(tree.nb_nodes()); i++) {
+        cout << "Node " << i << ": " << tree.tag(i, "Condition") << "\n";
     }
 }
