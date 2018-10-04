@@ -37,10 +37,10 @@ using namespace std;
     stringstream error_ss{""}; \
     try
 
-#define TEST_ERROR_END(message) \
-    catch (NHXException e) {    \
-        error_ss << e.what();   \
-    }                           \
+#define TEST_ERROR_END(message)    \
+    catch (NHXParserException e) { \
+        error_ss << e.what();      \
+    }                              \
     CHECK(error_ss.str() == message);
 
 TEST_CASE("Error: invalid token") {
@@ -48,7 +48,7 @@ TEST_CASE("Error: invalid token") {
 
     TEST_ERROR { NHXParser parser(ss); }
     TEST_ERROR_END(
-        "Error: unexpected token +++++)&é'...\nError at position "
+        "Error: unexpected token starting with +\nError at position "
         "8:\n\taopzioei+++++)&é')\"àq...\n\t        ^\n");
 }
 

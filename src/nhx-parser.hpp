@@ -99,8 +99,8 @@ class DoubleListAnnotatedTree : public AnnotatedTree {
 };
 
 /*================================================================================================*/
-struct NHXException : public std::runtime_error {
-    NHXException(std::string s = "") : std::runtime_error(s) {}
+struct NHXParserException : public std::runtime_error {
+    NHXParserException(std::string s = "") : std::runtime_error(s) {}
 };
 
 /*================================================================================================*/
@@ -119,6 +119,17 @@ class NHXParser : public TreeParser {
         Identifier,
         Invalid
     };
+    std::map<TokenType, std::string> token_names{{OpenParenthesis, "OpenParenthesis"},
+                                                 {CloseParenthesis, "CloseParenthesis"},
+                                                 {Colon, "Colon"},
+                                                 {Semicolon, "Semicolon"},
+                                                 {Comma, "Comma"},
+                                                 {Equal, "Equal"},
+                                                 {NHXOpen, "NHXOpen"},
+                                                 {CommentOpen, "CommentOpen"},
+                                                 {BracketClose, "BracketClose"},
+                                                 {Identifier, "Identifier"},
+                                                 {Invalid, "Invalid"}};
     std::map<TokenType, std::regex> token_regexes{{OpenParenthesis, std::regex("\\(")},
                                                   {CloseParenthesis, std::regex("\\)")},
                                                   {Colon, std::regex(":")},
@@ -152,14 +163,14 @@ class NHXParser : public TreeParser {
            << (at_end ? "" : "...") << "\n";
         ss << "\t" << (at_begining ? "" : "   ")
            << std::string(at_begining ? std::distance(scit(input.begin()), it) : 15, ' ') << "^\n";
-        throw NHXException(ss.str());
+        throw NHXParserException(ss.str());
     }
 
     std::string expect(TokenType type) {
         find_token();
         if (next_token.first != type) {
-            error("Error: expected token " + std::to_string(type) + " but got token " +
-                  std::to_string(next_token.first) + "(" + next_token.second + ") instead.\n");
+            error("Error: expected token " + token_names.at(type) + " but got token " +
+                  token_names.at(next_token.first) + "(" + next_token.second + ") instead.\n");
         } else {
             return next_token.second;
         }
@@ -173,7 +184,8 @@ class NHXParser : public TreeParser {
         int token_number{0};
         for (auto token_regex : token_regexes) {
             std::smatch m;
-            if (std::regex_search(it, it + 64, m, token_regex.second) and m.prefix() == "") {
+            auto r = std::regex_search(it, scit(input.end()), m, token_regex.second);
+            if (r and m.prefix() == "") {
                 if (token_regex.first == CommentOpen) {  // support of comments
                     std::string comment_close{"]"};
                     it = std::search(it, scit(input.end()), comment_close.begin(),
@@ -189,7 +201,9 @@ class NHXParser : public TreeParser {
             }
             token_number++;
         }
-        next_token = Token{Invalid, std::string(it, it + 10) + "..."};  // no token found in chain
+        next_token = Token{Invalid, it == scit(input.end())
+                                        ? "end of input"
+                                        : ("token starting with " + std::string(it, it + 1))};
     }
 
     // parser
@@ -264,7 +278,7 @@ class NHXParser : public TreeParser {
             case Semicolon:
                 break;
             default:
-                error("Error: unexpected token " + next_token.second + '\n');
+                error("Error: unexpected " + next_token.second + '\n');
         }
     }
 
@@ -281,7 +295,7 @@ class NHXParser : public TreeParser {
         } else if (next_token.first == Colon) {
             data(number, parent);
         } else {
-            error("Error: improperly formatted contents in NHX data. Found unexpected token " +
+            error("Error: improperly formatted contents in NHX data. Found unexpected " +
                   next_token.second + '\n');
         }
     }
@@ -292,6 +306,11 @@ class NHXParser : public TreeParser {
         tree.root_ = 0;
         input = std::string(std::istreambuf_iterator<char>(is), {});
         it = input.begin();
+
+        if (input.length() == 0) {
+            throw NHXParserException("Error: empty input stream!\n");
+        }
+
         node_nothing(0, -1);
     }
 
