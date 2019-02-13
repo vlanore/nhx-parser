@@ -341,6 +341,10 @@ class NHXParser : public TreeParser {
             case NHXOpen:
                 data(number, parent);
                 break;
+            case Identifier:
+                tree.nodes_[number]["name"] = next_token.second;
+                node_name(number, parent);
+                break;
             default:
                 node_end(parent);
         }
