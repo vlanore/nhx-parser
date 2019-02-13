@@ -73,6 +73,9 @@ TEST_CASE("Small tree.") {
     CHECK(tree.parent(6) == 1);
     CHECK((tree.children(7) == std::vector<int>{8, 9, 10, 11}));
     CHECK(tree.root() == 0);
+    stringstream ss_write{tree.as_string()};
+    NHXParser parser_write(ss_write);
+    CHECK(parser_write.get_tree() == tree);
 }
 
 TEST_CASE("Comments.") {
@@ -98,6 +101,9 @@ TEST_CASE("Comments.") {
     CHECK(tree.parent(6) == 1);
     CHECK((tree.children(7) == std::vector<int>{8, 9, 10, 11}));
     CHECK(tree.root() == 0);
+    stringstream ss_write{tree.as_string()};
+    NHXParser parser_write(ss_write);
+    CHECK(parser_write.get_tree() == tree);
 }
 
 TEST_CASE("Medium-sized tree (110 nodes).") {
@@ -114,4 +120,7 @@ TEST_CASE("Medium-sized tree (110 nodes).") {
     CHECK(tree.parent(100) == 99);
     CHECK((tree.children(100) == std::vector<int>{101, 102}));
     CHECK(tree.root() == 0);
+    stringstream ss_write{tree.as_string()};
+    NHXParser parser_write(ss_write);
+    CHECK(parser_write.get_tree() == tree);
 }
