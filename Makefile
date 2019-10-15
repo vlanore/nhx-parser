@@ -4,8 +4,8 @@ CPPFLAGS= -Wall -Wextra -O3 --std=c++11
 
 all: test_bin
 
-%_bin: src/%.cpp src/*.hpp
-	$(CXX) -I. $(CPPFLAGS) $< -o $@
+%_bin: src/%.cpp src/*.hpp src/nhx-parser.cpp
+	$(CXX) -I. $(CPPFLAGS) $< src/nhx-parser.cpp -o $@
 
 clean:
 	rm -f *_bin *.hpp
